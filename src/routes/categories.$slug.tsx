@@ -315,6 +315,16 @@ function CheckoutModal({ entries, categoryId, categoryName, onClose, onSuccess }
 
   const TELEGRAM_URL = `https://t.me/${telegramUsername}`;
 
+  function getOrderSummaryBaseUrl(): string {
+    const fallback = "https://project--bf2ef212-829b-4812-a441-a03da9bb67f1-dev.lovable.app";
+    if (typeof window === "undefined") return fallback;
+    const origin = window.location.origin.replace(/\/$/, "");
+    const previewMatch = origin.match(/^https:\/\/id-preview--([^.]+)\.(.+)$/i);
+    if (previewMatch) return `https://project--${previewMatch[1]}-dev.${previewMatch[2]}`;
+    if (/^https?:\/\/localhost(?::\d+)?$/i.test(origin)) return fallback;
+    return origin;
+  }
+
   function buildSummary(orderId: string, createdAt: string | null): string {
     const when = createdAt ? new Date(createdAt) : new Date();
     const orderTime =
@@ -349,12 +359,8 @@ function CheckoutModal({ entries, categoryId, categoryName, onClose, onSuccess }
     lines.push("Order Time:");
     lines.push(orderTime);
     lines.push("");
-    const rawOrigin = typeof window !== "undefined" ? window.location.origin : "";
-    const origin = /lovable\.(app|dev)$/i.test(rawOrigin) || !rawOrigin
-      ? "https://selamcakeorder.vercel.app"
-      : rawOrigin;
     lines.push("View Complete Order:");
-    lines.push(`${origin}/order/${orderId}#ordered-items`);
+    lines.push(`${getOrderSummaryBaseUrl()}/order/${orderId}#ordered-items`);
     lines.push("");
     lines.push("Thank you.");
 
@@ -395,7 +401,7 @@ function CheckoutModal({ entries, categoryId, categoryName, onClose, onSuccess }
     if (!deliveryDate) return setError("Please choose a delivery/pickup date.");
 
     // Open the tab synchronously (inside the click handler) so popup blockers allow it.
-    const telegramTab = window.open("about:blank", "_blank", "noopener,noreferrer");
+    const telegramTab = window.open("about:blank", "_blank");
     setSubmitting(true);
     try {
       const newId =
@@ -431,14 +437,13 @@ function CheckoutModal({ entries, categoryId, categoryName, onClose, onSuccess }
 
       // Generate the structured order summary and pre-fill it into the Telegram chat.
       const summary = buildSummary(body.id, body.created_at ?? null);
-      await copyToClipboard(summary);
 
       // Redirect the pre-opened tab to Telegram with the message pre-filled.
       const telegramWithText = `${TELEGRAM_URL}?text=${encodeURIComponent(summary)}`;
       if (telegramTab && !telegramTab.closed) {
         telegramTab.location.href = telegramWithText;
       } else {
-        window.open(telegramWithText, "_blank", "noopener,noreferrer");
+        window.location.href = telegramWithText;
       }
 
       setConfirmation(
