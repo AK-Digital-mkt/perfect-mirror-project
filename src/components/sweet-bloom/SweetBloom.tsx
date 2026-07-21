@@ -89,8 +89,9 @@ export default function SweetBloom() {
     setSending(true);
 
     // 1) Save the order + push photos & details to the manager's Telegram (server-side)
+    let orderId: string | null = null;
     try {
-      await placeOrderFn({
+      const res = await placeOrderFn({
         data: {
           customer_name: custName,
           customer_phone: custPhone,
@@ -104,29 +105,32 @@ export default function SweetBloom() {
           total: cartTotal,
         },
       });
+      orderId = (res as { id?: string })?.id ?? null;
     } catch (err) {
       console.error("Place order failed", err);
     }
 
-    // 2) Always open the Telegram chat with the order text as a fallback
+    // 2) Open Telegram with a short summary linking to the full order page
+    const shortId = orderId ? orderId.slice(0, 8).toUpperCase() : "----";
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const orderUrl = orderId ? `${origin}/orders/${orderId}` : "";
     const lines: string[] = [];
-    lines.push("🌸 *Selam Cake & Arts — New Order*");
+    lines.push("🛒 New Order");
+    lines.push(`Order #${shortId}`);
     lines.push("");
-    if (custName) lines.push(`👤 Name: ${custName}`);
-    if (custPhone) lines.push(`📞 Phone: ${custPhone}`);
-    if (custAddress) lines.push(`📍 Address: ${custAddress}`);
-    lines.push("");
-    lines.push("🧁 Items:");
-    cartItems.forEach(({ dish, qty }) => {
-      lines.push(`• ${loc(dish, "name", lang)} × ${qty} — ETB ${dish.price * qty}`);
-    });
-    lines.push("");
-    lines.push(`💰 Total: ETB ${cartTotal}`);
+    if (custName) lines.push(`Customer: ${custName}`);
+    lines.push(`Total: ETB ${cartTotal}`);
+    if (orderUrl) {
+      lines.push("");
+      lines.push("View complete order:");
+      lines.push(orderUrl);
+    }
     const text = lines.join("\n");
     const url = `https://t.me/${MANAGER_TG}?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank");
     setSending(false);
   }
+
 
   // theme & lang persistence
   useEffect(() => {
