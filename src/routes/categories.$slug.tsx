@@ -349,7 +349,10 @@ function CheckoutModal({ entries, categoryId, categoryName, onClose, onSuccess }
     lines.push("Order Time:");
     lines.push(orderTime);
     lines.push("");
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const rawOrigin = typeof window !== "undefined" ? window.location.origin : "";
+    const origin = /lovable\.(app|dev)$/i.test(rawOrigin) || !rawOrigin
+      ? "https://selamcakeorder.vercel.app"
+      : rawOrigin;
     lines.push("View Complete Order:");
     lines.push(`${origin}/order/${orderId}#ordered-items`);
     lines.push("");
