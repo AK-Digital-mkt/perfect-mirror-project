@@ -41,8 +41,9 @@ export const Route = createFileRoute("/orders/$id")({
 });
 
 function OrderSummary() {
-  const { order } = Route.useLoaderData();
-  const items = Array.isArray(order.items) ? order.items : [];
+  const { order } = Route.useLoaderData() as { order: Order };
+  const items: OrderItem[] = Array.isArray(order.items) ? (order.items as OrderItem[]) : [];
+
   const shortId = order.id.slice(0, 8).toUpperCase();
 
   return (
