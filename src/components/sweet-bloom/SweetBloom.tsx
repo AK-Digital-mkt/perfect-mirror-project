@@ -113,7 +113,7 @@ export default function SweetBloom() {
     // 2) Open Telegram with a short summary linking to the full order page
     const shortId = orderId ? orderId.slice(0, 8).toUpperCase() : "----";
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const orderUrl = orderId ? `${origin}/orders/${orderId}` : "";
+    const orderUrl = orderId ? `${origin}/order/${orderId}#ordered-items` : "";
     const lines: string[] = [];
     lines.push("🛒 New Order");
     lines.push(`Order #${shortId}`);
@@ -122,7 +122,7 @@ export default function SweetBloom() {
     lines.push(`Total: ETB ${cartTotal}`);
     if (orderUrl) {
       lines.push("");
-      lines.push("View complete order:");
+      lines.push("View Order:");
       lines.push(orderUrl);
     }
     const text = lines.join("\n");
