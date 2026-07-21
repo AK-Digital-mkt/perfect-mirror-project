@@ -45,13 +45,14 @@ function buildCaption(order: PlaceOrderInput, orderId?: string): string {
 }
 
 
-async function sendToTelegram(order: PlaceOrderInput) {
+async function sendToTelegram(order: PlaceOrderInput, orderId?: string) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) return;
 
   const api = (m: string) => `https://api.telegram.org/bot${token}/${m}`;
-  const caption = buildCaption(order);
+  const caption = buildCaption(order, orderId);
+
   const photos = order.items
     .map((it) => it.img)
     .filter((u): u is string => !!u && /^https:\/\//i.test(u));
