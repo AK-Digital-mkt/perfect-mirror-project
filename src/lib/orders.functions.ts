@@ -61,13 +61,14 @@ function buildCaption(order: PlaceOrderInput, orderId?: string): string {
 }
 
 
-async function sendToTelegram(order: PlaceOrderInput) {
+async function sendToTelegram(order: PlaceOrderInput, orderId?: string) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) return; // Telegram not configured — skip silently
 
   const api = (method: string) => `https://api.telegram.org/bot${token}/${method}`;
-  const caption = buildCaption(order);
+  const caption = buildCaption(order, orderId);
+
 
   // Collect valid photo URLs (https only — Telegram requires reachable URLs)
   const photos = order.items
