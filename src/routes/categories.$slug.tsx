@@ -433,9 +433,13 @@ function CheckoutModal({ entries, categoryId, categoryName, onClose, onSuccess }
       const summary = buildSummary(body.id, body.created_at ?? null);
       await copyToClipboard(summary);
 
-      // Open Telegram with the message pre-filled so the customer only needs to press Send.
+      // Redirect the pre-opened tab to Telegram with the message pre-filled.
       const telegramWithText = `${TELEGRAM_URL}?text=${encodeURIComponent(summary)}`;
-      window.open(telegramWithText, "_blank", "noopener,noreferrer");
+      if (telegramTab && !telegramTab.closed) {
+        telegramTab.location.href = telegramWithText;
+      } else {
+        window.open(telegramWithText, "_blank", "noopener,noreferrer");
+      }
 
       setConfirmation(
         "Your order has been saved successfully. Telegram has been opened with your order details pre-filled—just press Send to submit it.",
