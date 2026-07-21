@@ -135,7 +135,7 @@ export const placeOrder = createServerFn({ method: "POST" })
       throw new Error("Could not save order");
     }
 
-    await sendToTelegram(data);
+    await sendToTelegram(data, order.id);
 
     return { ok: true, id: order.id };
   });
