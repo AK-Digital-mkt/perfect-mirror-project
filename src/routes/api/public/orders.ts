@@ -21,7 +21,7 @@ const PlaceOrderSchema = z.object({
 
 type PlaceOrderInput = z.infer<typeof PlaceOrderSchema>;
 
-function buildCaption(order: PlaceOrderInput): string {
+function buildCaption(order: PlaceOrderInput, orderId?: string): string {
   const lines: string[] = [];
   lines.push("🌸 Selam Cake & Arts — New Order");
   lines.push("");
@@ -36,8 +36,14 @@ function buildCaption(order: PlaceOrderInput): string {
   });
   lines.push("");
   lines.push(`💰 Total: ETB ${order.total}`);
+  if (orderId) {
+    const base = process.env.PUBLIC_SITE_URL || "https://selamcakeorder.vercel.app";
+    lines.push("");
+    lines.push(`🔗 View Order: ${base.replace(/\/$/, "")}/order/${orderId}#ordered-items`);
+  }
   return lines.join("\n");
 }
+
 
 async function sendToTelegram(order: PlaceOrderInput) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
