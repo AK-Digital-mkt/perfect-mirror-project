@@ -394,6 +394,8 @@ function CheckoutModal({ entries, categoryId, categoryName, onClose, onSuccess }
     if (phone.trim().length > 30) return setError("Phone number is too long.");
     if (!deliveryDate) return setError("Please choose a delivery/pickup date.");
 
+    // Open the tab synchronously (inside the click handler) so popup blockers allow it.
+    const telegramTab = window.open("about:blank", "_blank", "noopener,noreferrer");
     setSubmitting(true);
     try {
       const newId =
