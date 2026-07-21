@@ -132,7 +132,7 @@ export const Route = createFileRoute("/api/public/orders")({
           return Response.json({ error: "Could not save order" }, { status: 500 });
         }
 
-        await sendToTelegram(data);
+        await sendToTelegram(data, order.id);
 
         return Response.json({
           ok: true,
