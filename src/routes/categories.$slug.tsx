@@ -349,7 +349,12 @@ function CheckoutModal({ entries, categoryId, categoryName, onClose, onSuccess }
     lines.push("Order Time:");
     lines.push(orderTime);
     lines.push("");
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    lines.push("View Complete Order:");
+    lines.push(`${origin}/order/${orderId}#ordered-items`);
+    lines.push("");
     lines.push("Thank you.");
+
     return lines.join("\n");
   }
 
