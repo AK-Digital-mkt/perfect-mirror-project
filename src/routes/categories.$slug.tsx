@@ -447,6 +447,7 @@ function CheckoutModal({ entries, categoryId, categoryName, onClose, onSuccess }
       setSuccess({ id: body.id, delivery_date: body.delivery_date ?? deliveryDate });
       onSuccess?.();
     } catch (err: any) {
+      if (telegramTab && !telegramTab.closed) telegramTab.close();
       setError(err?.message || "Something went wrong");
     } finally {
       setSubmitting(false);
