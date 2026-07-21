@@ -1,6 +1,26 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+const GetOrderSchema = z.object({ id: z.string().uuid() });
+
+export const getOrder = createServerFn({ method: "GET" })
+  .inputValidator((input: { id: string }) => GetOrderSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: order, error } = await supabaseAdmin
+      .from("orders")
+      .select("id, customer_name, customer_phone, customer_address, items, total, created_at")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) {
+      console.error("[orders] get failed", error);
+      throw new Error("Could not load order");
+    }
+    if (!order) throw new Error("Order not found");
+    return order;
+  });
+
+
 const OrderItemSchema = z.object({
   name: z.string().min(1).max(200),
   qty: z.number().int().min(1).max(999),
