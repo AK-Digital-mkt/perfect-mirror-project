@@ -349,7 +349,10 @@ function CheckoutModal({ entries, categoryId, categoryName, onClose, onSuccess }
     lines.push("Order Time:");
     lines.push(orderTime);
     lines.push("");
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const rawOrigin = typeof window !== "undefined" ? window.location.origin : "";
+    const origin = /lovable\.(app|dev)$/i.test(rawOrigin) || !rawOrigin
+      ? "https://selamcakeorder.vercel.app"
+      : rawOrigin;
     lines.push("View Complete Order:");
     lines.push(`${origin}/order/${orderId}#ordered-items`);
     lines.push("");
@@ -391,6 +394,8 @@ function CheckoutModal({ entries, categoryId, categoryName, onClose, onSuccess }
     if (phone.trim().length > 30) return setError("Phone number is too long.");
     if (!deliveryDate) return setError("Please choose a delivery/pickup date.");
 
+    // Open the tab synchronously (inside the click handler) so popup blockers allow it.
+    const telegramTab = window.open("about:blank", "_blank", "noopener,noreferrer");
     setSubmitting(true);
     try {
       const newId =
@@ -428,9 +433,13 @@ function CheckoutModal({ entries, categoryId, categoryName, onClose, onSuccess }
       const summary = buildSummary(body.id, body.created_at ?? null);
       await copyToClipboard(summary);
 
-      // Open Telegram with the message pre-filled so the customer only needs to press Send.
+      // Redirect the pre-opened tab to Telegram with the message pre-filled.
       const telegramWithText = `${TELEGRAM_URL}?text=${encodeURIComponent(summary)}`;
-      window.open(telegramWithText, "_blank", "noopener,noreferrer");
+      if (telegramTab && !telegramTab.closed) {
+        telegramTab.location.href = telegramWithText;
+      } else {
+        window.open(telegramWithText, "_blank", "noopener,noreferrer");
+      }
 
       setConfirmation(
         "Your order has been saved successfully. Telegram has been opened with your order details pre-filled—just press Send to submit it.",
@@ -438,6 +447,7 @@ function CheckoutModal({ entries, categoryId, categoryName, onClose, onSuccess }
       setSuccess({ id: body.id, delivery_date: body.delivery_date ?? deliveryDate });
       onSuccess?.();
     } catch (err: any) {
+      if (telegramTab && !telegramTab.closed) telegramTab.close();
       setError(err?.message || "Something went wrong");
     } finally {
       setSubmitting(false);
