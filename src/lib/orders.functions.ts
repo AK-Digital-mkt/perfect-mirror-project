@@ -38,7 +38,7 @@ const PlaceOrderSchema = z.object({
 
 type PlaceOrderInput = z.infer<typeof PlaceOrderSchema>;
 
-function buildCaption(order: PlaceOrderInput): string {
+function buildCaption(order: PlaceOrderInput, orderId?: string): string {
   const lines: string[] = [];
   lines.push("🌸 Selam Cake & Arts — New Order");
   lines.push("");
@@ -52,16 +52,23 @@ function buildCaption(order: PlaceOrderInput): string {
   });
   lines.push("");
   lines.push(`💰 Total: ETB ${order.total}`);
+  if (orderId) {
+    const base = process.env.PUBLIC_SITE_URL || "https://selamcakeorder.vercel.app";
+    lines.push("");
+    lines.push(`🔗 View Order: ${base.replace(/\/$/, "")}/order/${orderId}#ordered-items`);
+  }
   return lines.join("\n");
 }
 
-async function sendToTelegram(order: PlaceOrderInput) {
+
+async function sendToTelegram(order: PlaceOrderInput, orderId?: string) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) return; // Telegram not configured — skip silently
 
   const api = (method: string) => `https://api.telegram.org/bot${token}/${method}`;
-  const caption = buildCaption(order);
+  const caption = buildCaption(order, orderId);
+
 
   // Collect valid photo URLs (https only — Telegram requires reachable URLs)
   const photos = order.items
@@ -128,7 +135,7 @@ export const placeOrder = createServerFn({ method: "POST" })
       throw new Error("Could not save order");
     }
 
-    await sendToTelegram(data);
+    await sendToTelegram(data, order.id);
 
     return { ok: true, id: order.id };
   });
