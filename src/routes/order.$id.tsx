@@ -1,4 +1,4 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { getOrder } from "@/lib/orders.functions";
 
@@ -34,16 +34,64 @@ export const Route = createFileRoute("/order/$id")({
   loader: async ({ params }) => {
     try {
       const order = (await getOrder({ data: { id: params.id } })) as Order;
-      return { order };
-    } catch {
-      throw notFound();
+      return { order, missingId: null as string | null };
+    } catch (err) {
+      console.error("[order] loader failed", err);
+      return { order: null as Order | null, missingId: params.id };
     }
   },
+  errorComponent: ({ error }) => (
+    <div style={{ padding: 24, fontFamily: "system-ui", color: "#7a6a58" }}>
+      Could not load this order. {error?.message ?? ""}
+    </div>
+  ),
   component: OrderSummary,
 });
 
 function OrderSummary() {
-  const { order } = Route.useLoaderData() as { order: Order };
+  const { order, missingId } = Route.useLoaderData() as {
+    order: Order | null;
+    missingId: string | null;
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash === "#ordered-items") {
+      const el = document.getElementById("ordered-items");
+      if (el) el.scrollIntoView({ behavior: "auto", block: "start" });
+    }
+  }, []);
+
+  if (!order) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#faf7f2",
+          padding: "48px 16px",
+          fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+          color: "#2b2118",
+          textAlign: "center",
+        }}
+      >
+        <div style={{ maxWidth: 520, margin: "0 auto" }}>
+          <div style={{ fontSize: 13, letterSpacing: 1, color: "#a97a4a", textTransform: "uppercase" }}>
+            Selam Cake & Arts
+          </div>
+          <h1 style={{ fontSize: 24, margin: "10px 0 8px" }}>Order not available</h1>
+          <p style={{ color: "#7a6a58", fontSize: 14 }}>
+            We couldn't find an order for this link yet. It may still be syncing—please try again in a moment.
+          </p>
+          {missingId && (
+            <p style={{ marginTop: 8, fontSize: 12, color: "#a97a4a" }}>
+              Reference: {missingId.slice(0, 8).toUpperCase()}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const items: OrderItem[] = Array.isArray(order.items) ? (order.items as OrderItem[]) : [];
   const shortId = order.id.slice(0, 8).toUpperCase();
 
