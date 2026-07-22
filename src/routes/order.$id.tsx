@@ -72,23 +72,11 @@ function OrderSummary() {
       }
     }
 
-    fetch(`/api/public/order-summary?id=${encodeURIComponent(id)}`)
-      .then(async (res) => {
-        const body = await res.json();
-        if (!res.ok || !body?.order) throw new Error(body?.error || "Could not load order");
-        return body.order as Order;
-      })
-      .then((nextOrder) => {
-        if (alive) setOrder(nextOrder);
-      })
-      .catch((err) => {
-        console.error("[order] load failed", err);
-        if (alive) setOrder(null);
-        if (alive) setLoadFailed(true);
-      })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
+    if (alive) {
+      setOrder(null);
+      setLoadFailed(true);
+      setLoading(false);
+    }
 
     return () => {
       alive = false;
