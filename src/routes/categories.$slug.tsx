@@ -316,13 +316,10 @@ function CheckoutModal({ entries, categoryId, categoryName, onClose, onSuccess }
   const TELEGRAM_URL = `https://t.me/${telegramUsername}`;
 
   function getOrderSummaryBaseUrl(): string {
-    const fallback = "https://project--bf2ef212-829b-4812-a441-a03da9bb67f1-dev.lovable.app";
-    if (typeof window === "undefined") return fallback;
-    const origin = window.location.origin.replace(/\/$/, "");
-    const previewMatch = origin.match(/^https:\/\/id-preview--([^.]+)\.(.+)$/i);
-    if (previewMatch) return `https://project--${previewMatch[1]}-dev.${previewMatch[2]}`;
-    if (/^https?:\/\/localhost(?::\d+)?$/i.test(origin)) return fallback;
-    return origin;
+    if (typeof window !== "undefined") {
+      return window.location.origin.replace(/\/$/, "");
+    }
+    return "https://project--bf2ef212-829b-4812-a441-a03da9bb67f1.lovable.app";
   }
 
   function buildSummary(orderId: string, createdAt: string | null): string {
