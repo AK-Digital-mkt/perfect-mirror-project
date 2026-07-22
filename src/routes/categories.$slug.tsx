@@ -317,12 +317,24 @@ function CheckoutModal({ entries, categoryId, categoryName, onClose, onSuccess }
 
   function getOrderSummaryBaseUrl(): string {
     if (typeof window !== "undefined") {
-      return window.location.origin.replace(/\/$/, "");
+      const origin = window.location.origin.replace(/\/$/, "");
+      const previewMatch = origin.match(/^https:\/\/id-preview--([^.]+)\.(.+)$/);
+      if (previewMatch) {
+        return `https://project--${previewMatch[1]}-dev.${previewMatch[2]}`;
+      }
+      return origin;
     }
     return "https://project--bf2ef212-829b-4812-a441-a03da9bb67f1.lovable.app";
   }
 
-  function buildSummary(orderId: string, createdAt: string | null): string {
+  function createOrderSummaryToken(order: unknown): string {
+    return btoa(unescape(encodeURIComponent(JSON.stringify(order))))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+  }
+
+  function buildSummary(orderId: string, createdAt: string | null, summaryUrl: string): string {
     const when = createdAt ? new Date(createdAt) : new Date();
     const orderTime =
       `${when.getFullYear()}-${String(when.getMonth() + 1).padStart(2, "0")}-${String(when.getDate()).padStart(2, "0")} ` +
@@ -357,7 +369,7 @@ function CheckoutModal({ entries, categoryId, categoryName, onClose, onSuccess }
     lines.push(orderTime);
     lines.push("");
     lines.push("View Complete Order:");
-    lines.push(`${getOrderSummaryBaseUrl()}/order/${orderId}#ordered-items`);
+    lines.push(summaryUrl);
     lines.push("");
     lines.push("Thank you.");
 
@@ -401,13 +413,11 @@ function CheckoutModal({ entries, categoryId, categoryName, onClose, onSuccess }
     const telegramTab = window.open("about:blank", "_blank");
     setSubmitting(true);
     try {
-      const newId =
-        (typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
-      const createdAt = new Date().toISOString();
       const payload = {
-        id: newId,
+        id:
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         customer_name: name.trim(),
         customer_phone: phone.trim(),
         customer_address: address.trim() || null,
@@ -422,18 +432,28 @@ function CheckoutModal({ entries, categoryId, categoryName, onClose, onSuccess }
         cake_id: primary?.id ?? null,
         category_id: categoryId,
       };
-      const { error: insertError } = await supabase
-        .from("orders")
-        .insert(payload);
+      const { error: insertError } = await supabase.from("orders").insert(payload);
       if (insertError) {
         throw new Error(insertError.message || "Could not place order");
       }
-      const body = { id: newId, delivery_date: deliveryDate, created_at: createdAt };
+      const body = { id: payload.id, delivery_date: deliveryDate, created_at: new Date().toISOString() };
+      const summaryToken = createOrderSummaryToken({
+        id: body.id,
+        customer_name: payload.customer_name,
+        customer_phone: payload.customer_phone,
+        customer_address: payload.customer_address,
+        delivery_date: payload.delivery_date,
+        items: payload.items,
+        total: payload.total,
+        created_at: body.created_at,
+        notes: instructions.trim() || null,
+      });
+      const summaryUrl = `${getOrderSummaryBaseUrl()}/order/${body.id}?summary=${summaryToken}#ordered-items`;
 
 
 
       // Generate the structured order summary and pre-fill it into the Telegram chat.
-      const summary = buildSummary(body.id, body.created_at ?? null);
+      const summary = buildSummary(body.id, body.created_at ?? null, summaryUrl);
 
       // Redirect the pre-opened tab to Telegram with the message pre-filled.
       const telegramWithText = `${TELEGRAM_URL}?text=${encodeURIComponent(summary)}`;

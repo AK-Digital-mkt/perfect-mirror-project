@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { getOrder } from "@/lib/orders.functions";
+import { useEffect, useState } from "react";
 
 type OrderItem = {
   name: string;
@@ -20,6 +19,7 @@ type Order = {
   items: OrderItem[];
   total: number;
   created_at: string;
+  delivery_date?: string | null;
   notes?: string | null;
 };
 
@@ -31,15 +31,6 @@ export const Route = createFileRoute("/order/$id")({
       { name: "viewport", content: "width=device-width, initial-scale=1" },
     ],
   }),
-  loader: async ({ params }) => {
-    try {
-      const order = (await getOrder({ data: { id: params.id } })) as Order;
-      return { order, missingId: null as string | null };
-    } catch (err) {
-      console.error("[order] loader failed", err);
-      return { order: null as Order | null, missingId: params.id };
-    }
-  },
   errorComponent: ({ error }) => (
     <div style={{ padding: 24, fontFamily: "system-ui", color: "#7a6a58" }}>
       Could not load this order. {error?.message ?? ""}
@@ -49,20 +40,72 @@ export const Route = createFileRoute("/order/$id")({
 });
 
 function OrderSummary() {
-  const { order, missingId } = Route.useLoaderData() as {
-    order: Order | null;
-    missingId: string | null;
-  };
+  const { id } = Route.useParams();
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  function decodeOrderSummaryToken(token: string): Order | null {
+    try {
+      const normalized = token.replace(/-/g, "+").replace(/_/g, "/");
+      const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+      return JSON.parse(decodeURIComponent(escape(atob(padded)))) as Order;
+    } catch {
+      return null;
+    }
+  }
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.location.hash === "#ordered-items") {
-      const el = document.getElementById("ordered-items");
-      if (el) el.scrollIntoView({ behavior: "auto", block: "start" });
-    }
-  }, []);
+    let alive = true;
+    setLoading(true);
+    setLoadFailed(false);
 
-  if (!order) {
+    if (typeof window !== "undefined") {
+      const token = new URLSearchParams(window.location.search).get("summary");
+      const linkedOrder = token ? decodeOrderSummaryToken(token) : null;
+      if (linkedOrder?.id === id) {
+        setOrder(linkedOrder);
+        setLoading(false);
+        return () => {
+          alive = false;
+        };
+      }
+    }
+
+    fetch(`/api/public/order-summary?id=${encodeURIComponent(id)}`)
+      .then(async (res) => {
+        const body = await res.json();
+        if (!res.ok || !body?.order) throw new Error(body?.error || "Could not load order");
+        return body.order as Order;
+      })
+      .then((nextOrder) => {
+        if (alive) setOrder(nextOrder);
+      })
+      .catch((err) => {
+        console.error("[order] load failed", err);
+        if (alive) setOrder(null);
+        if (alive) setLoadFailed(true);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    if (!order || typeof window === "undefined") return;
+    if (window.location.hash === "#ordered-items") {
+      requestAnimationFrame(() => {
+        const el = document.getElementById("ordered-items");
+        if (el) el.scrollIntoView({ behavior: "auto", block: "start" });
+      });
+    }
+  }, [order]);
+
+  if (loading || !order) {
     return (
       <div
         style={{
@@ -78,13 +121,17 @@ function OrderSummary() {
           <div style={{ fontSize: 13, letterSpacing: 1, color: "#a97a4a", textTransform: "uppercase" }}>
             Selam Cake & Arts
           </div>
-          <h1 style={{ fontSize: 24, margin: "10px 0 8px" }}>Order not available</h1>
+          <h1 style={{ fontSize: 24, margin: "10px 0 8px" }}>
+            {loading ? "Loading order summary" : "Order not available"}
+          </h1>
           <p style={{ color: "#7a6a58", fontSize: 14 }}>
-            We couldn't find an order for this link yet. It may still be syncing—please try again in a moment.
+            {loadFailed
+              ? "We couldn't open this order link. Please ask the customer to resend the Telegram message."
+              : "Please wait while we open the saved order details."}
           </p>
-          {missingId && (
+          {!loading && (
             <p style={{ marginTop: 8, fontSize: 12, color: "#a97a4a" }}>
-              Reference: {missingId.slice(0, 8).toUpperCase()}
+              Reference: {id.slice(0, 8).toUpperCase()}
             </p>
           )}
         </div>
@@ -94,15 +141,6 @@ function OrderSummary() {
 
   const items: OrderItem[] = Array.isArray(order.items) ? (order.items as OrderItem[]) : [];
   const shortId = order.id.slice(0, 8).toUpperCase();
-
-  // Ensure hash anchor (#ordered-items) scrolls into view after hydration
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.location.hash === "#ordered-items") {
-      const el = document.getElementById("ordered-items");
-      if (el) el.scrollIntoView({ behavior: "auto", block: "start" });
-    }
-  }, []);
 
   return (
     <div
